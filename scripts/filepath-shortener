@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+shrtrhome=~/.s
+template="XXXX"
+
+fn="$(readlink -f "$1")"
+
+function out(){
+nn=$(echo $1| sed "s#$HOME#~#")
+echo $nn
+if [ -x /usr/bin/xclip ]; then
+    echo $nn | xclip
+fi
+}
+
+[ ! -d "${shrtrhome}" ] && mkdir "${shrtrhome}"
+
+#find_unique_name 
+for l in $shrtrhome/*; do
+    ln="$(readlink -f "$l")"
+    if [ "$ln" == "$fn" ]; then
+        out $l
+        exit 0
+    fi
+done
+
+shrtname="$(mktemp -u --tmpdir=$shrtrhome $template)"
+
+ln -sf $fn $shrtname
+
+out $shrtname
+exit 0
+
