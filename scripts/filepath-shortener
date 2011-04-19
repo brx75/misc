@@ -3,15 +3,21 @@
 shrtrhome=~/.s
 template="XXXX"
 
+name="$(basename "$1")"
 fn="$(readlink -f "$1")"
 
 function out(){
 nn=$(echo $1| sed "s#$HOME#~#")
-echo $nn
+echo "$name - $nn"
 if [ -x /usr/bin/xclip ]; then
-    echo $nn | xclip
+    echo "$name - $nn" | xclip
 fi
 }
+
+if [ ! -f "$fn" ] || [ -z "$fn" ] ; then 
+    echo "No such file: '$fn'" >&2
+    exit -1 
+fi
 
 [ ! -d "${shrtrhome}" ] && mkdir "${shrtrhome}"
 
