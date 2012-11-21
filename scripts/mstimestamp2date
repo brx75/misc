@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+#!/usr/bin/env bash
+# Copyright (c) 2012, Fabrizio Listello <flistellox@gmail.com>
+
+appname="$(basename $0)"
+AUTHOR="flistellox@gmail.com"
+DATE="20/11/2012"
+VERSION="0.1"
+USAGE="Usage: $(basename $0) timestamp [format]"
+DESCRIPTION="Converts timestamps from MS AD format to date."
+
+if [ -z "$1" ]; then
+    echo "$USAGE"
+    if [ -n "$DESCRIPTION" ]; then
+      echo "$DESCRIPTION"
+    fi 
+    exit 1
+fi
+
+
+#
+# Options Parsing
+# 
+
+TEMP=$(getopt --name $(basename $0) -l help -o h  -- "$@")
+
+eval set -- "$TEMP"
+
+while true; do
+	case "$1" in
+        --) 
+            shift;
+            break;;
+		-h|--help|*)
+            echo "$USAGE";
+            exit 2;;
+	esac
+done
+shift $(($OPTIND - 1))
+
+
+timestamp="${1}" # timestamp is 1/100 of nanosecond
+format="${2:-"+%c"}"
+
+msepoch="-11644473600" # MS Timestamps epoch starts on 01/01/1601 UTC 
+
+timestamp_s=$(( ($timestamp / 10000000) + ($msepoch) ))
+date -d "@$timestamp_s" "$format"
