@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-#!/usr/bin/env bash
-# Copyright (c) 2012, Fabrizio Listello <flistellox@gmail.com>
+# Copyright (c) 2012, <brx75x@gmail.com>
 
-appname="$(basename $0)"
-AUTHOR="flistellox@gmail.com"
+
+
+AUTHOR="brx75x@gmail.com"
 DATE="20/11/2012"
 VERSION="0.1"
 USAGE="Usage: $(basename $0) timestamp [format]"
-DESCRIPTION="Converts timestamps from MS AD format to date."
+DESCRIPTION='This script takes Microsoft Active Directory timestamp format, 
+like `pwdLastSet`, `badPasswordTime`, `lastLogon`, `lastLogonTimestamp`, 
+and converts it to a date.'
 
 if [ -z "$1" ]; then
     echo "$USAGE"
@@ -46,3 +48,4 @@ msepoch="-11644473600" # MS Timestamps epoch starts on 01/01/1601 UTC
 
 timestamp_s=$(( ($timestamp / 10000000) + ($msepoch) ))
 date -d "@$timestamp_s" "$format"
+
