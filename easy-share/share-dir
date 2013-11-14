@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Copyright (c) 2012, Fabrizio Listello <flistellox@gmail.com>
+
+appname="$(basename $0)"
+AUTHOR="flistellox@gmail.com"
+DATE="04/09/2012"
+VERSION="0.1"
+USAGE="Usage: $(basename $0) [http|webfs|hg|git] [FILE]"
+DESCRIPTION="Shares the current directory or a single file"
+
+if [ -z "$1" ]; then
+    echo "$USAGE"
+    if [ -n "$DESCRIPTION" ]; then
+      echo "$DESCRIPTION"
+    fi 
+    exit 1
+fi
+
+
+#
+# Options Parsing
+# 
+
+command="python -m SimpleHTTPServer"
+ip=0.0.0.0
+port=$(( $RANDOM + 1024 ))
+proto="http"
+
+echo "$@"
+
+case "$1" in
+    webfs) command="webfsd -F -d -p $port"; proto="http"; shift ;;
+    http|simple|python|simplehttpserver) command="python -m SimpleHTTPServer $port"; proto="http"; shift ;;
+    hg) command="hg serve";;
+    git) command="git daemon --reuseaddr --base-path=. --export-all --verbose"; shift ;;
+    svn) command="svnserve -d --foreground --listen-port $port"; shift ;;
+    ftp) command="echo 'Not implemented yet'"; shift ;;
+    samba) command="echo 'Not implemented yet'"; shift ;;
+    nfs) command="echo 'Not implemented yet'"; shift ;;
+	-h|--help|*)
+        echo "$USAGE";
+        exit 2;;
+esac
+
+fn="$PWD"
+sharedir="$PWD"
+
+if [ -n "$1" ] && [ -e "$1" ]; then
+    sharedir="$(mktemp -d)"
+    ln -s "$(readlink -f $1)" "$sharedir/$1"
+    fn="$sharedir/$1"
+fi
+
+echo "Serving '$fn' with '$command'."
+
+echo "Sharing URL are:"
+ip -f inet -o addr show | while read id nic fam ipmask rest; do
+  ip=$(echo $ipmask| cut -d '/' -f 1)
+  echo -e "\t$proto://$ip:$port"
+done
+
+cd "$sharedir" && $command
+
