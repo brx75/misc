@@ -1,0 +1,43 @@
+#!/usr/bin/perl
+
+use Gimp;
+use Gimp::Fu;
+use Gimp::Feature;
+use Gimp::Util;
+
+register 
+   "convert_images",
+   "Converts images to xcf",
+   "Help",
+   "Fabrizio Listello", 
+   "Fabrizio Listello", 
+   "20030115", 
+   N_"<Toolbox>/Xtns/Convert/Images to xcf...",
+   "RGB*, GRAYA",
+	[
+	  [PF_STRING, "image_dir", "Images directory"],
+        ],
+        sub {
+   my ($dir,$width,$height,$opacity)=@_;
+   Gimp::set_trace(TRACE_ALL);
+ #  my $img=new Image($width,$height,RGB);
+   print "DEBUG: **** load images from $dir\n";
+   local *DIR;
+   if (opendir(DIR,$dir)) {
+      my $file;
+      my @files = sort grep {/\.\w+$/} readdir DIR;
+      closedir(DIR);
+      foreach $file (@files) {
+	print "DEBUG: Load file: $dir/$file\n";
+	$file = "$dir/$file";
+        $img = Gimp->file_load ($file,$file);
+	print "DEBUG: Loaded!\n";
+	$file = "$file.xcf";
+        Gimp->xcf_save(0,$img,0,$file,$file);
+	print "DEBUG: Saved $file!\n";
+      }
+    };
+ $img;
+};
+
+exit main;

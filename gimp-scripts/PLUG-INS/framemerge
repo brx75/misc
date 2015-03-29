@@ -1,0 +1,69 @@
+#!/usr/bin/perl
+
+use Gimp;
+use Gimp::Fu;
+use Gimp::Feature;
+use Gimp::Util;
+
+register 
+   "frame_merge",
+   "Merge frames to a picture",
+   "Help",
+   "Fabrizio Listello", 
+   "Fabrizio Listello", 
+   "20030115", 
+   N_"<Toolbox>/Xtns/Convert/Frame Merge...",
+   "RGB*, GRAYA",
+	[
+	  [PF_STRING, "image_dir", "Images directory"],
+	  [PF_INT, "opacity","Layer Opacity",50],
+	  [PF_INT, "mode","Layer combination Mode",NORMAL_MODE],
+        ],
+        sub {
+   my ($dir,$opacity,$mode)=@_;
+   #Gimp::set_trace(TRACE_ALL);
+   #my $img=new Image($width,$height,RGB);
+   print "DEBUG: **** load images from $dir\n" if ($debug);
+   local *DIR;
+   my $img;
+   my $width;
+   my $height;
+   my $debug=1;
+   if (opendir(DIR,$dir)) {
+      my $file;
+      my @files = sort grep {/\.\w+$/} readdir DIR;
+      closedir(DIR);
+      my $i=0;
+      Gimp->progress_init("Loading layers from\n$dir",-1);
+      Gimp->progress_update(0);
+      foreach $file (@files) {
+	print "DEBUG $i: Load file: $dir/$file\n" if ($debug);
+	$file = "$dir/$file";
+	if ($i == 0){
+          $img= Gimp->file_load($file,$file);
+	  $width = $img->width();
+	  $height = $img->height();
+	  $i++;
+	  next;
+        };
+        my $img_t = Gimp->file_load ($file,$file);
+	print "DEBUG: Loaded!\n" if ($debug);
+	my $drw = $img_t->active_drawable();
+	$drw->edit_cut();
+        my $l = new Layer($img,$width,$height,RGB,"Layer-$i",$opacity,NORMAL_MODE);
+        $l->add_layer(-1);
+	my $sel = $l->edit_paste(1);
+	$sel->anchor();
+        $i++;
+	eval {
+	$p=(($i)/($#files+1));
+	Gimp->progress_update($p);
+	};
+	print "DEBUG: $p\n" if ($debug);
+   }
+ };
+ print "DEBUG: Done\n" if ($debug);
+ $img;
+};
+
+exit main;
