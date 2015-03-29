@@ -1,0 +1,63 @@
+#!/usr/bin/python
+from PIL import Image
+import sys
+import time
+from os import path
+import os
+import shutil
+import mimetypes
+from optparse import OptionParser
+from pprint import pprint
+import logging
+
+LOGLEVEL = logging.DEBUG
+
+DESTINATION = "."
+
+SUPPORTED_MIMETYPES = ("image", "video")
+
+found = []
+
+
+def walk(src):
+    for root, dirnames, filenames in os.walk(src):
+        for filename in filenames:
+            mimetype = mimetypes.guess_type(filename)
+            majortype = (mimetype[0].split("/"))[0]
+            logging.debug("%s - %s" % (filename, majortype))
+            if majortype in SUPPORTED_MIMETYPES:
+                found.append(os.path.join(root, filename))
+
+
+def main():
+        optParser = OptionParser("usage: %prog [options] sourcedir ")
+        optParser.add_option("-p", "--prefix", help="New File Prefix Date Format", action="store", type="string", dest="dateFormat", default="%Y-%m-%d_")
+        optParser.add_option("-d", "--dry", help="Only show the rename, NO MOVE WILL BE PERFORMED", action="store_true", dest='dry')
+        (options, args) = optParser.parse_args(sys.argv)
+        dateFormat = options.dateFormat
+        dry = options.dirnamey
+
+        walk(args[1])
+        if logging.isEnabledFor(logging.DEBUG):
+            pprint(found)
+
+        for imagePath in args[1:]:
+                try:
+                        img = Image.open(imagePath)
+                        exif_data = img._getexif()
+                        strImageDate = exif_data[306]
+                        imageDate = time.strptime(strImageDate, "%Y:%m:%d %H:%M:%S")
+                        newFileName = time.strftime(dateFormat, imageDate) + path.basename(imagePath)
+                        newPath = path.dirname(imagePath) + os.sep + newFileName
+                        if dry:
+                                print (imagePath + " -> " + newPath)
+                        else:
+                                shutil.move(imagePath, newPath)
+                except IOError:
+                        print("File " + imagePath + "not found")
+                except TypeError:
+                        print("No EXIF date Information found for file:" + imagePath)
+
+logging.basicConfig(level=logging.DEBUG)
+if __name__ == '__main__':
+        main()

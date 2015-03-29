@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# Copyright (c) 2012, Fabrizio Listello <flistellox@gmail.com>
+
+appname="$(basename $0)"
+AUTHOR="flistellox@gmail.com"
+DATE="20/09/2012"
+VERSION="0.1"
+USAGE="Usage: $(basename $0) [options]"
+DESCRIPTION=""
+
+if [ "$1" == "--usage" ]; then
+    echo "$USAGE"
+    if [ -n "$DESCRIPTION" ]; then
+      echo "$DESCRIPTION"
+    fi 
+    exit 1
+fi
+
+#
+# Diagnostic Functions 
+#
+function message(){
+    level=$(echo $1 | tr "[:lower:]" "[:upper:]")
+    shift
+
+    if [ -z "$QUIET" ]; then
+        echo "$($DATETAG):$appname:$level:${FUNCNAME[1]}:${BASH_LINENO[0]}:$@"
+    fi
+}
+
+function debug(){
+ if [ -n "$DEBUG" ]; then
+    message DEBUG "$@"
+ fi
+}
+
+function error(){
+    message ERROR "$@"
+}
+
+function warn(){
+    message WARNING "$@"
+}
+
+#
+# Options Parsing
+# 
+
+TEMP=$(getopt --name $(basename $0) -l help -o h  -- "$@")
+
+eval set -- "$TEMP"
+
+while true; do
+	case "$1" in
+        --) 
+            shift;
+            break;;
+		-h|--help|*)
+            echo "$USAGE";
+            exit 2;;
+	esac
+done
+shift $(($OPTIND - 1))
+
+wmctrl -l -p -G | while read wid desktop pid  x y w h client title; do
+    echo "wid=$wid"
+    echo "desktop=$desktop"
+    echo "pid=$pid"
+    echo "title=$title"
+    ps -p $pid -o args=
+    echo "==="
+done

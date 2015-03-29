@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+SATEDIR=/var/cache/apt
+STATEFILE=temppkg.state
+
+function apt_install(){
+    for pkg in $@ ; do 
+        echo $pkg >> ${STATEDIR}/${STATEFILE}
+    done
+    
+    apt-get install $@
+}
+
+function apt_purge(){
+   pkgs=$(cat ${STATEDIR}/${STATEFILE}) 
+   apt-get purge $pkgs
+}
+
+function apt_list(){
+    cat ${STATEDIR}/${STATEFILE}
+}
+
+function apt_keep(){
+    echo "Not yet implemented."
+}
+
+
+case $1 in
+    install) 
+        shift
+        apt_install $@
+        ;;
+    purge)
+        shift
+        apt_purge
+        ;;
+    list)
+        shift
+        apt_list
+        ;;
+    keep)
+        shift
+        apt_keep
+        ;;
+esac
+
