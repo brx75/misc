@@ -1,0 +1,142 @@
+#!/usr/bin/env bash
+
+USAGE="Usage: $(basename $0) [--help] [--do|-D] [-v|--verbose] [-m|--move-to=DIRECTORY] FILE..."
+
+if [[ -z "$1" ]]; then
+    echo "$USAGE"
+    exit 1
+fi
+
+
+#
+# Options Parsing
+#
+
+opt_verbose=1
+opt_rename_only=1
+mv="mv -i"
+
+TEMP=$(getopt --name $(basename $0) -l help,do,verbose,rename-only,move-to:,copy-to: -o hDvrm:c:  -- "$@")
+
+split=4
+eval set -- "$TEMP"
+
+while true; do
+	case "$1" in
+        --do|-D)
+            shift;
+            opt_do=1
+            ;;
+        --verbose|-v)
+            shift;
+            opt_verbose=1
+            ;;
+        --rename-only|-r)
+            shift;
+            opt_rename_only=1
+            ;;
+        --move-to|-m)
+            shift
+            opt_move_to=1
+            to_dir="$1"
+            shift
+            ;;
+        --copy-to|-c)
+            shift
+            opt_copy_to=1
+            to_dir="$1"
+            shift
+            ;;
+        --)
+            shift;
+            break;;
+		-h|--help|*)
+            echo "$USAGE";
+            exit 2;;
+	esac
+done
+shift $(($OPTIND - 1))
+
+while [[ "$1" ]]; do
+
+    if [[ ! -e "$1" ]]; then
+        echo "Error. File not found: '$1'"
+        exit 1
+    fi
+
+    datetime=$(exiftool -DateTimeOriginal -d '%Y%m%d_%H%M%S' -p '$DateTimeOriginal' "$1" 2>/dev/null)
+    year=$(exiftool -DateTimeOriginal -d '%Y' -p '$DateTimeOriginal' "$1" 2>/dev/null)
+    day=$(exiftool -DateTimeOriginal -d '%Y-%m-%d' -p '$DateTimeOriginal' "$1" 2>/dev/null)
+    #author=$(exiftool -s3 -author "$1" 2>/dev/null)
+    filename="$(basename "$1")"
+    ext="${filename##*.}"
+    #ext=$(exiftool -s3 -FileTypeExtension "$1" 2>/dev/null)
+    if [[ "$ext" == "nef" ]]; then
+        ext="NEF"
+    fi
+    if [[ -z "$datetime" ]]; then
+        datetime=$(exiftool -MediaCreateDate -d '%Y%m%d_%H%M%S' -p '$MediaCreateDate' "$1" 2>/dev/null)
+        year=$(exiftool -MediaCreateDate -d '%Y' -p '$MediaCreateDate' "$1" 2>/dev/null)
+        day=$(exiftool -MediaCreateDate -d '%Y-%m-%d' -p '$MediaCreateDate' "$1" 2>/dev/null )
+    fi
+    if [[ -z "$datetime" ]]; then
+        echo "$1 - WARNING: Cannot find a valid shoot date and time. Skipping."
+        shift
+        continue
+    fi
+    
+    olddir=$(dirname "$1")
+    newdir=${olddir}/${year}/${day}
+    if [[ -n "$to_dir" ]] || [[ -z "$opt_rename_only" ]]; then
+        newdir=${to_dir}/${year}/${day}
+    fi
+
+    oldname="$(basename "$1" .${ext})"
+
+    if [[ "${oldname}" != "${datetime}" ]]; then
+        suffix="_${oldname}"
+    fi
+    if [[ -n "${author}" ]]; then
+        suffix="${suffix}_${author}"
+    fi
+
+    newname="${newdir}/${datetime}${suffix}.${ext}"
+
+    xmpname="${oldname}.xmp"
+    newxmpname="${olddir}/${datetime}${suffix}.xmp"
+
+    if [[ -z "$datetime" ]]; then
+        shift
+        continue
+    fi
+
+    #if [[ "${oldname}" =~ ^${datetime} ]]; then
+    #    newname="${1}"
+    #fi
+
+    if [[ -n "$opt_verbose" ]]; then
+        printf "IMG: %s (${datetime}) -> %s" "${1}" "${newname}"
+    fi
+    if [[ -n "$opt_do" ]]; then
+        if [[ ! -d "${newdir}" ]]; then
+            mkdir -p "${newdir}"
+        fi
+        if [[ ! -e "${newname}" ]]; then
+            if [[ -n "$opt_copy_to" ]]; then
+                cp -i -p "$1" "${newname}"
+            else
+                $mv "$1" "${newname}"
+            fi
+            printf " (%d)" "$?"
+        else
+            printf " (%s)" "WARNING: File already exists."
+        fi
+        if [[ -e "${olddir}/${xmpname}" ]] && [[ ! -e "${newxmpname}" ]]; then
+            printf "\nXMP: %s -> %s" "${olddir}/${xmpname}" "${newxmpname}"
+            $mv "${olddir}/${xmpname}" "${newxmpname}"
+            printf " (%d)" "$?"
+        fi
+    fi
+    printf "\n"
+    shift
+done

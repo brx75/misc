@@ -1,0 +1,30 @@
+#!/usr/bin/env python
+import os
+import sys
+from optparse import OptionParser
+from dateutil.parser import parse as dateparse
+import pprint
+
+
+USAGE = "Usage: $(basename $0) [--help] [--do|-D] [-v|--verbose] DateFormat FILE..."
+
+
+optParser = OptionParser("usage: %prog [options] sourcedir ")
+optParser.add_option("-f", "--format", help="Date Format", action="store", type="string", dest="dateFormat", default="%Y-%m-%d %H.%M.%S")
+optParser.add_option("-d", "--dry", help="Only show the rename, NO MOVE WILL BE PERFORMED", action="store_true", dest='dry')
+(options, args) = optParser.parse_args(sys.argv)
+dateFormat = options.dateFormat
+dry = options.dry
+
+
+for filename_ext in args[1:]:
+    filename, ext = os.path.splitext(filename_ext)
+    filename_norm = filename.replace(".", ":")
+    try:
+        datetime = dateparse(filename_norm, yearfirst=True)
+    except ValueError, e:
+        print "WARNING: filename '%s' does not match any dateformat." % (filename_ext)
+        continue
+    if datetime:
+        print "INFO: filename '%s' matches a dateformat: %s" % (filename_ext, datetime)
+        print 'exiftool -v -preserve -overwrite_original -DateTimeOriginal="%s" "%s"' % (datetime, filename_ext)

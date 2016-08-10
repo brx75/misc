@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+
+f_ext2="${1}"
+shift
+
+while [[ "${1}" ]]; do
+    if [[ -f "${1}" ]]; then
+        f_ext1="$(echo "$1" | awk -F '.' '{print "."$NF}')"
+        f_name="$(dirname "$1")/$(basename "$1" $f_ext1)"
+        if [[ -f ${f_name}.${f_ext2} ]]; then
+            if [[ -n "$SIMPLE" ]]; then
+                echo "${f_name}.${f_ext2}"
+            else
+                if [[ -n "$ZERO" ]]; then
+                printf "%s\0" "${f_name}.${f_ext2}" 
+                else
+                    echo -n "${1} "
+                    stat --format="%n (%F %y)" "${f_name}.${f_ext2}"
+                fi
+            fi
+        fi
+    fi
+    shift
+done

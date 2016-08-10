@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+
+USAGE="Usage: $(basename $0) [--help] [--do|-D] [-v|--verbose] FILE..."
+
+if [[ -z "$1" ]]; then
+    echo "$USAGE"
+    exit 1
+fi
+
+declare -A photolist
+
+while [[ "$1" ]]; do
+
+    if [[ ! -f "$1" ]]; then
+        echo "Error. Not a file: '$1'" >&2
+        shift
+        continue
+    fi
+
+    mime="$(file -b --mime-type "$1")"
+
+    case "$mime" in
+        image/tiff) 
+            supported=1
+            ;;
+        image/jpeg)
+            supported=1
+            ;;
+        *)
+            supported=0
+            echo "Error. File '$1' is an usupported type: $mime." >&2
+            shift
+            continue
+            ;;
+    esac
+
+
+    normalized_filename=$(echo $(basename "$1") | sed -e 's/\.NEF//' -e 's/\.JPG//' -e  's/\.nef//' -e 's/\.jpg//' | sed -e 's/\(^[^\s]\+\)\s.*/\1/' )
+    photoid_exif="$(exiftool -d '%Y%m%d_%H%M%S' -p '$Make $Model $ExposureTime $FNumber $ISO $DateTimeOriginal $FocalLengthIn35mmFormat $FOV $HyperfocalDistance $LightValue $GainControl' "$1" 2>/dev/null | tr ' ' '_' )"
+    photoid="${normalized_filename}_${photoid_exif}"
+
+    #echo "photoid=$photoid"
+    if [[ -n "$photoid" ]]; then
+        printf '%s;"%s";"%s"\n' $photoid "$1" "$photoid"
+
+        if [[ -z "${photolist[$photoid]}" ]]; then
+            photolist[$photoid]="$1"
+        else
+            printf '%s;"%s";"%s"\n' $photoid "$1" "${photolist[$photoid]}"
+        fi
+
+    fi
+    shift
+done

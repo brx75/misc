@@ -8,9 +8,12 @@ import shutil
 import mimetypes
 from optparse import OptionParser
 from pprint import pprint
+from pprint import pformat
 import logging
 
 LOGLEVEL = logging.DEBUG
+logging.basicConfig(level=LOGLEVEL)
+logger = logging.getLogger()
 
 DESTINATION = "."
 
@@ -20,28 +23,33 @@ found = []
 
 
 def walk(src):
+    logger.debug("-> %s" % (src))
     for root, dirnames, filenames in os.walk(src):
+        logger.debug("root=%s dirnames=%s filenames=%s" % (root, dirnames, filenames))
         for filename in filenames:
-            mimetype = mimetypes.guess_type(filename)
+            fullname = os.path.join(root, filename)
+            logger.debug("filename=%s" % (fullname))
+            mimetype = mimetypes.guess_type(fullname)
+            logger.debug("mimetype=%s" % (pformat(mimetype)))
             majortype = (mimetype[0].split("/"))[0]
-            logging.debug("%s - %s" % (filename, majortype))
+            logger.debug("%s - %s" % (filename, majortype))
             if majortype in SUPPORTED_MIMETYPES:
                 found.append(os.path.join(root, filename))
 
 
 def main():
         optParser = OptionParser("usage: %prog [options] sourcedir ")
-        optParser.add_option("-p", "--prefix", help="New File Prefix Date Format", action="store", type="string", dest="dateFormat", default="%Y-%m-%d_")
+        optParser.add_option("-p", "--prefix", help="New File Prefix Date Format", action="store", type="string", dest="dateFormat", default="%Y%m%d_%H%M%S_")
         optParser.add_option("-d", "--dry", help="Only show the rename, NO MOVE WILL BE PERFORMED", action="store_true", dest='dry')
         (options, args) = optParser.parse_args(sys.argv)
         dateFormat = options.dateFormat
-        dry = options.dirnamey
+        dry = options.dry
 
         walk(args[1])
-        if logging.isEnabledFor(logging.DEBUG):
+        if logger.isEnabledFor(logging.DEBUG):
             pprint(found)
 
-        for imagePath in args[1:]:
+        for imagePath in found:
                 try:
                         img = Image.open(imagePath)
                         exif_data = img._getexif()
