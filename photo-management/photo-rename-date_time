@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-USAGE="Usage: $(basename $0) [--help] [--do|-D] [-v|--verbose] [-m|--move-to=DIRECTORY] FILE..."
+USAGE="Usage: $(basename $0) [--help] [--do|-D] [-v|--verbose] [--no-name-suffix] [-m|--move-to=DIRECTORY] FILE..."
 
 if [[ -z "$1" ]]; then
     echo "$USAGE"
@@ -14,9 +14,10 @@ fi
 
 opt_verbose=1
 opt_rename_only=1
+opt_no_name=0
 mv="mv -i"
 
-TEMP=$(getopt --name $(basename $0) -l help,do,verbose,rename-only,move-to:,copy-to: -o hDvrm:c:  -- "$@")
+TEMP=$(getopt --name $(basename $0) -l help,do,verbose,rename-only,no-name-suffix,move-to:,copy-to: -o hDvrm:c:  -- "$@")
 
 split=4
 eval set -- "$TEMP"
@@ -46,6 +47,10 @@ while true; do
             opt_copy_to=1
             to_dir="$1"
             shift
+            ;;
+        --no-name-suffix)
+            shift
+            opt_no_name=1
             ;;
         --)
             shift;
@@ -92,18 +97,23 @@ while [[ "$1" ]]; do
     fi
 
     oldname="$(basename "$1" .${ext})"
+    suffix=""
 
-    if [[ "${oldname}" != "${datetime}" ]]; then
+    if [[ "${oldname}" != "${datetime}" ]] && [[ "${opt_no_name}" -eq 0 ]]; then
         suffix="_${oldname}"
     fi
     if [[ -n "${author}" ]]; then
         suffix="${suffix}_${author}"
     fi
 
-    newname="${newdir}/${datetime}${suffix}.${ext}"
+    newbasename="${datetime}${suffix}.${ext}"
+    newname="${newdir}/${newbasename}"
 
     xmpname="${oldname}.xmp"
-    newxmpname="${olddir}/${datetime}${suffix}.xmp"
+    newxmpname="${newdir}/${datetime}${suffix}.xmp"
+
+    synothumbdir="@eaDir/${oldname}.${ext}"
+    newsynothumbdir="${newdir}/@eaDir/"
 
     if [[ -z "$datetime" ]]; then
         shift
@@ -134,6 +144,12 @@ while [[ "$1" ]]; do
         if [[ -e "${olddir}/${xmpname}" ]] && [[ ! -e "${newxmpname}" ]]; then
             printf "\nXMP: %s -> %s" "${olddir}/${xmpname}" "${newxmpname}"
             $mv "${olddir}/${xmpname}" "${newxmpname}"
+            printf " (%d)" "$?"
+        fi
+        if [[ -d "${olddir}/${synothumbdir}" ]] && [[ ! -d "${newsynothumbdir}/${newbasename}" ]]; then
+            mkdir -p "${newsynothumbdir}" 2>/dev/null
+            printf "\nThumbs: %s -> %s" "${olddir}/${synothumbdir}" "${newsynothumbdir}/${newbasename}"
+            $mv "${olddir}/${synothumbdir}" "${newsynothumbdir}/${newbasename}"
             printf " (%d)" "$?"
         fi
     fi

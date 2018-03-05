@@ -1,24 +1,27 @@
 #!/usr/bin/env bash
 
 
-USAGE="Usage: $(basename $0) [--help] [--do|-D] [-v|--verbose] FILE..."
+USAGE="Usage: $(basename $0) [--help] [-v|--verbose] DIR"
 
-if [[ -z "$1" ]]; then
+if [[ -z "$1" ]] || [[ ! -d "$1" ]]; then
     echo "$USAGE"
     exit 1
 fi
 
 declare -A photolist
 
-while [[ "$1" ]]; do
+printf "PHOTOID_SHA256 PHOTOID_INFO FILENAME\n"
+find "$1" -type f ! -path "*/@eaDir/*" | while read; do
 
-    if [[ ! -f "$1" ]]; then
-        echo "Error. Not a file: '$1'" >&2
+    FILE="$REPLY"
+
+    if [[ ! -f "$FILE" ]]; then
+        echo "Error. Not a file: '$FILE'" >&2
         shift
         continue
     fi
 
-    mime="$(file -b --mime-type "$1")"
+    mime="$(file -b --mime-type "$FILE")"
 
     case "$mime" in
         image/tiff) 
@@ -29,27 +32,21 @@ while [[ "$1" ]]; do
             ;;
         *)
             supported=0
-            echo "Error. File '$1' is an usupported type: $mime." >&2
+            echo "Error. File '$FILE' is an usupported type: $mime." >&2
             shift
             continue
             ;;
     esac
 
 
-    normalized_filename=$(echo $(basename "$1") | sed -e 's/\.NEF//' -e 's/\.JPG//' -e  's/\.nef//' -e 's/\.jpg//' | sed -e 's/\(^[^\s]\+\)\s.*/\1/' )
-    photoid_exif="$(exiftool -d '%Y%m%d_%H%M%S' -p '$Make $Model $ExposureTime $FNumber $ISO $DateTimeOriginal $FocalLengthIn35mmFormat $FOV $HyperfocalDistance $LightValue $GainControl' "$1" 2>/dev/null | tr ' ' '_' )"
-    photoid="${normalized_filename}_${photoid_exif}"
+    normalized_filename=$(echo $(basename "$FILE") | sed -e 's/\.NEF//' -e 's/\.JPG//' -e  's/\.nef//' -e 's/\.jpg//' | sed -e 's/\(^[^\s]\+\)\s.*/\1/' )
+    photoid_exif="$(exiftool -f -api MissingTagValue='undef' -d '%Y%m%d_%H%M%S' -n -p '$ShutterCount $DateTimeOriginal $SubSecTime $ExposureTime $FNumber $ISO $FocalLengthIn35mmFormat $FOV $FocusDistance $LightValue $GainControl $Make $Model' "$FILE" 2>/dev/null | tr ' ' '_' )"
+    photoid="${photoid_exif}"
+    photoid_sha256="$(echo ${photoid_exif} | sha256sum | cut -d ' ' -f 1)"
 
     #echo "photoid=$photoid"
     if [[ -n "$photoid" ]]; then
-        printf '%s;"%s";"%s"\n' $photoid "$1" "$photoid"
-
-        if [[ -z "${photolist[$photoid]}" ]]; then
-            photolist[$photoid]="$1"
-        else
-            printf '%s;"%s";"%s"\n' $photoid "$1" "${photolist[$photoid]}"
-        fi
-
+        printf '%s %s "%s"\n' $photoid_sha256 $photoid "$FILE" 
     fi
     shift
 done
